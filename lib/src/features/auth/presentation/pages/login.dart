@@ -182,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 10),
                     TextWidget(
                       text:
-                          'It was popularised in the 1960s with the release of Letraset sheetscontaining Lorem Ipsum.',
+                          'The cause of making the world a better place for children unites us all -Liam Neeson.',
                       textAlign: TextAlign.center,
                       fontSize: 14,
                       color: AppColors.darkGray,

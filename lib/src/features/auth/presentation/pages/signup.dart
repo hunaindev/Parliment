@@ -155,7 +155,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'It was popularised in the 1960s with the release of Letraset sheetscontaining Lorem Ipsum.',
+                      'The cause of making the world a better place for children unites us all -Liam Neeson.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
