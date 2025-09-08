@@ -1,0 +1,3 @@
+
+var screenWidth;
+var screenHeight;
