@@ -6,4 +6,7 @@ abstract class GetDashboardRemoteSource {
   Future<DashboardDataModel> fetchDasboard({
     required String parentId,
   });
+  Future<void> refreshToken({
+    required String userId,
+  });
 }

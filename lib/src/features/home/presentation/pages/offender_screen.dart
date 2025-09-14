@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:parliament_app/src/core/config/app_colors.dart';
@@ -136,6 +138,7 @@ class _OffenderScreenState extends State<OffenderScreen> {
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final children = context.read<ChildLocationCubit>().state;
           return Column(
             children: [
               Padding(
@@ -173,48 +176,54 @@ class _OffenderScreenState extends State<OffenderScreen> {
               // }),
               // Expanded(
               //   child:
-              BlocBuilder<OffenderBloc, OffenderState>(
-                builder: (context, state) {
-                  if (state is OffenderError) {
-                    return Center(child: Text("❌ ${state.message}"));
-                  }
+              children.isEmpty
+                  ? Center(
+                      child: Text("Connect the child first to view offenders."))
+                  : BlocBuilder<OffenderBloc, OffenderState>(
+                      builder: (context, state) {
+                        if (state is OffenderError) {
+                          return Center(child: Text("❌ ${state.message}"));
+                        }
 
-                  if (state is OffenderLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                        if (state is OffenderLoading) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
 
-                  if (state is OffenderLoaded) {
-                    if (state.offenders.isEmpty) {
-                      return const Center(child: Text("No offenders found."));
-                    }
+                        if (state is OffenderLoaded) {
+                          if (state.offenders.isEmpty) {
+                            return const Center(
+                                child: Text("offenders not founded"));
+                          }
 
-                    return SingleChildScrollView(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          ...state.offenders.map((offender) {
-                            return OffenderCard(offender: {
-                              'name': offender.name,
-                              'age': 'Age: ${offender.age}',
-                              'location': offender.address,
-                              'conviction': offender.courtRecord,
-                              'image': offender.photoUrl,
-                            });
-                          }).toList(),
-                          if (state.hasMore)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Center(child: CircularProgressIndicator()),
+                          return SingleChildScrollView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              children: [
+                                ...state.offenders.map((offender) {
+                                  return OffenderCard(offender: {
+                                    'name': offender.name,
+                                    'age': 'Age: ${offender.age}',
+                                    'location': offender.address,
+                                    'conviction': offender.courtRecord,
+                                    'image': offender.photoUrl,
+                                  });
+                                }).toList(),
+                                if (state.hasMore)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  ),
+                              ],
                             ),
-                        ],
-                      ),
-                    );
-                  }
+                          );
+                        }
 
-                  return const Center(child: CircularProgressIndicator());
-                },
-              ),
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                    ),
               // ),
             ],
           );

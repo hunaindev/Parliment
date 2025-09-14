@@ -65,32 +65,28 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('OTP Verified')),
         );
-        print("data: ${data}");
-        print("data['accessToken']: ${data['accessToken']}");
-        await LocalStorage.saveToken(data['accessToken']);
 
-        final selectedUser = UserModel.fromJson(data['userJson']);
-        print("user: $selectedUser");
-
-        print("userJson['role'] ${selectedUser}");
-        print("userJson['role'] ${selectedUser.role}");
-
-        await LocalStorage.saveUser(selectedUser);
-        await LocalStorage.saveRole(selectedUser.role);
-        Future.microtask(() {
-          if (!mounted) return;
-          if (selectedUser.role == "parent") {
-            context.go(AppRoutes.parentHome);
-          } else {
-            if (selectedUser.isLinked == false) {
-              context.go(AppRoutes.linkToParent); // 🔁 Redirect if not linked
+        if (widget.email.isNotEmpty && widget.token.isNotEmpty) {
+          GoRouter.of(context).go('/reset-password?email=${widget.email}');
+        } else {
+          await LocalStorage.saveToken(data['accessToken']);
+          final selectedUser = UserModel.fromJson(data['userJson']);
+          await LocalStorage.saveUser(selectedUser);
+          await LocalStorage.saveRole(selectedUser.role);
+          Future.microtask(() {
+            if (!mounted) return;
+            if (selectedUser.role == "parent") {
+              context.go(AppRoutes.parentHome);
             } else {
-              context.go(AppRoutes.childHome);
+              if (selectedUser.isLinked == false) {
+                context.go(AppRoutes.linkToParent); // 🔁 Redirect if not linked
+              } else {
+                context.go(AppRoutes.childHome);
+              }
             }
-          }
-
-          // GoRouter.of(context).go('/reset-password?email=${widget.email}');
-        });
+            // GoRouter.of(context).go('/reset-password?email=${widget.email}');
+          });
+        }
 
         // Navigate to Reset Password Screen
         // Navigator.push(
@@ -114,6 +110,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print(widget.email + widget.token);
     double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(

@@ -514,30 +514,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                BlocBuilder<OffenderBloc, OffenderState>(
-                  builder: (context, state) {
-                    if (state is OffenderLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+                state.children.isEmpty
+                    ? Center(
+                        child:
+                            Text("Connect the child first to view offenders."))
+                    : BlocBuilder<OffenderBloc, OffenderState>(
+                        builder: (context, state) {
+                          if (state is OffenderLoading) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          if (state is OffenderLoaded) {
+                            if (state.offenders.isEmpty) {
+                              return const Center(
+                                  child: Text("offenders not found."));
+                            }
+                            final offenderList = state.offenders
+                                .map((e) => Offender.fromEntity(e))
+                                .toList();
 
-                    if (state is OffenderLoaded) {
-                      if (state.offenders.isEmpty) {
-                        return const Center(child: Text("No offenders found."));
-                      }
-                      final offenderList = state.offenders
-                          .map((e) => Offender.fromEntity(e))
-                          .toList();
+                            return HomeOffenderCard(offenders: offenderList);
+                          }
 
-                      return HomeOffenderCard(offenders: offenderList);
-                    }
-
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primaryLightGreen,
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primaryLightGreen,
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
                 const SizedBox(height: 16),
               ],
             ),
