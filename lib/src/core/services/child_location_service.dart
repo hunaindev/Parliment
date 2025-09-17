@@ -12,6 +12,8 @@ import 'dart:async';
 import 'package:parliament_app/src/core/config/app_constants.dart';
 import 'package:parliament_app/src/core/services/child_realtime_service.dart';
 
+typedef OnCallBack = Function(bool isReadZone);
+
 class Geofence {
   final double latitude;
   final double longitude;
@@ -37,8 +39,8 @@ class ChildLocationService {
 
   // State for application-level filtering
   DateTime? _lastNotificationTime;
-  double? _lastLat;
-  double? _lastLng;
+  double? lastLat;
+  double? lastLng;
 
   // --- NEW: Public getter to expose the location stream ---
   // This is what your ChildMapScreen will listen to.
@@ -147,16 +149,16 @@ class ChildLocationService {
     }
   }
 
-  Future<void> startTracking({
-    required String childId,
-    required String parentDeviceToken,
-    required List<Geofence> geofences,
-    required List<Geofence> restricted_zones,
-    // required int radiusMeters,
-    required String childName,
-    required String childImage,
-    required String parentId,
-  }) async {
+  Future<void> startTracking(
+      {required String childId,
+      required String parentDeviceToken,
+      required List<Geofence> geofences,
+      required List<Geofence> restricted_zones,
+      // required int radiusMeters,
+      required String childName,
+      required String childImage,
+      required String parentId,
+      required OnCallBack onCallBack}) async {
     // Ensure any previous tracking is stopped before starting a new one
     await stopTracking();
     // Initialize the state for all geofences and zones to 'false' (outside)
@@ -192,6 +194,7 @@ class ChildLocationService {
 
           print(
               "📡 Location sent: \${currentLocation.latitude}, \${currentLocation.longitude}");
+          onCallBack(true);
         } else {
           print("📍 Location unchanged, not sending.");
         }

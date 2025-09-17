@@ -56,6 +56,7 @@ class _LiveLocationWidgetState extends State<LiveLocationWidget> {
             child: _fallbackLocation == null
                 ? Center(child: CircularProgressIndicator())
                 : GoogleMapScreen(
+                    offenderLocations: [],
                     locations: locations.isEmpty
                         ? [
                             LatLng(_fallbackLocation!.latitude!,

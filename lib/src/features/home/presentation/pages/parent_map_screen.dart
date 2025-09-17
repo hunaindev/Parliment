@@ -142,8 +142,14 @@
 //   }
 // }
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:parliament_app/src/core/config/app_constants.dart';
+import 'package:parliament_app/src/core/config/local_storage.dart';
+import 'package:parliament_app/src/features/auth/domain/entities/user_entity.dart';
+import 'package:parliament_app/src/features/home/data/model/children_model.dart';
 import 'package:parliament_app/src/features/home/presentation/blocs/dashboard/dashboard_bloc.dart';
 import 'package:parliament_app/src/features/home/presentation/blocs/dashboard/dashboard_state.dart';
 import 'package:parliament_app/src/features/home/presentation/blocs/location/location_cubit.dart';
@@ -151,6 +157,7 @@ import 'package:parliament_app/src/features/home/presentation/widgets/parent_map
 import 'package:parliament_app/src/core/widgets/map_search_bar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:location/location.dart';
+import 'package:http/http.dart' as http;
 
 class ParentMapScreen extends StatefulWidget {
   const ParentMapScreen({super.key});
@@ -184,9 +191,7 @@ class _ParentMapScreenState extends State<ParentMapScreen> {
 
   Future<void> _fetchCurrentLocation(geofences) async {
     setState(() => _loadingLocation = true);
-
     final location = Location();
-
     bool serviceEnabled = await location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await location.requestService();
@@ -195,7 +200,6 @@ class _ParentMapScreenState extends State<ParentMapScreen> {
         return;
       }
     }
-
     PermissionStatus permissionGranted = await location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await location.requestPermission();
@@ -254,12 +258,79 @@ class _ParentMapScreenState extends State<ParentMapScreen> {
     }
 
     setState(() => _zoneCircles = circles);
+    _updateOffenderMarker();
+  }
+
+  Set<Marker> _offenderMarkers = {};
+
+  Future<void> _updateOffenderMarker() async {
+    final children = context.read<ChildLocationCubit>().state;
+    final childrenWithLocation =
+        children.where((child) => child.location != null).toList();
+    if (childrenWithLocation.isNotEmpty) {
+      print("ddd");
+      await fetchOffenders(
+        lat: childrenWithLocation.first.location!.latitude,
+        lng: childrenWithLocation.first.location!.longitude,
+        page: 1,
+        pageSize: 20,
+      );
+    }
+    // for (LatLng location in childLocations) {
+    // final markers = await fetchOffenders(
+    //   lat: location.latitude,
+    //   lng: location.longitude,
+    //   page: 1,
+    //   pageSize: 20,
+    // );
+    // allMarkers.addAll(markers);
+    // }
+  }
+
+  Future<void> fetchOffenders({
+    required double lat,
+    required double lng,
+    required int page,
+    required int pageSize,
+  }) async {
+    // setState(() => _isLoading = true);
+    UserEntity? parentId = await LocalStorage.getUser();
+    final localUrl = Uri.parse(
+        "$baseUrl/api/v1/offender/get/${parentId?.userId}?lat=$lat&lng=$lng");
+    // Uri.parse("${baseUrl}/api/v1/offender/get?lat=$lat&lng=$lng&radius=1")
+    try {
+      final localResponse = await http.get(localUrl);
+      if (localResponse.statusCode == 200) {
+        final localData = jsonDecode(localResponse.body);
+        if (localData['data'] is List) {
+          final offenders = List<Map<String, dynamic>>.from(localData['data']);
+          // _showSnackbar("✅ Got offenders from local DB");
+          // return offenders.map((e) => e).toList();
+          final markers = offenders.map((offender) {
+            return Marker(
+              markerId: MarkerId(offender['_id']),
+              position: LatLng(offender['latitude'], offender['longitude']),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueViolet),
+              infoWindow: InfoWindow(title: offender['name']),
+            );
+          }).toSet();
+          setState(() => _offenderMarkers = markers);
+        } else {}
+      } else {
+        // print("Offender API Hitted");
+      }
+    } catch (e, stack) {
+      print('❌ Exception occurred in fetchOffenders: $e');
+      print('🔍 Stack trace: $stack');
+    } finally {
+      // setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final double topSpace = MediaQuery.of(context).padding.top + 40.0;
-    print(context.read<DashboardBloc>().redzone);
 
     return Scaffold(
       body: GestureDetector(
@@ -304,6 +375,7 @@ class _ParentMapScreenState extends State<ParentMapScreen> {
               return Stack(
                 children: [
                   ParentMapWidget(
+                    offenderMarker: _offenderMarkers,
                     locations:
                         locations.isEmpty ? [initialLocation] : locations,
                     circles: _zoneCircles,

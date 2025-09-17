@@ -290,11 +290,14 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
 import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:parliament_app/src/core/config/app_colors.dart';
 import 'package:parliament_app/src/core/config/local_storage.dart';
+import 'package:parliament_app/src/core/services/location_service.dart';
 import 'package:parliament_app/src/core/widgets/custom_text.dart';
+import 'package:parliament_app/src/features/auth/domain/entities/user_entity.dart';
 import 'package:parliament_app/src/features/auth/presentation/widgets/custom_text_button.dart';
 import 'package:parliament_app/src/features/history_reports/presentations/bloc/notification_bloc.dart';
 import 'package:parliament_app/src/features/history_reports/presentations/bloc/notification_event.dart';
@@ -338,12 +341,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .add(FetchDasboard(parentId: user.userId.toString()));
 
       context.read<NotificationBloc>().add(FetchNotifications());
+      LocationService().startRealtimeLocationUpdates();
 
-      Timer(const Duration(seconds: 3), () {
-        if (mounted) {
-          _fetchOffendersFromChildren();
-        }
-      });
+      // Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        _fetchOffendersFromChildren();
+      }
+      // });
     } else {
       print("User is null — wait before dispatching dashboard fetch.");
     }

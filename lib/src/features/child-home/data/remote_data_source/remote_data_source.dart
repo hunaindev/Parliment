@@ -15,6 +15,7 @@ class OffenderService {
         "$baseUrl/api/v1/offender/get/${parentId?.userId}?lat=$lat&lng=$lng");
     // Uri.parse("${baseUrl}/api/v1/offender/get?lat=$lat&lng=$lng&radius=1");
     final localResponse = await http.get(localUrl);
+    print("Offender All print dtet ${localResponse.body}");
     if (localResponse.statusCode == 200) {
       final localData = jsonDecode(localResponse.body);
       if (localData['data'] is List) {

@@ -5,8 +5,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class GoogleMapScreen extends StatefulWidget {
   final List<LatLng> locations;
+  final List<LatLng> offenderLocations;
 
-  const GoogleMapScreen({super.key, required this.locations});
+  const GoogleMapScreen(
+      {super.key, required this.locations, required this.offenderLocations});
 
   @override
   _GoogleMapScreenState createState() => _GoogleMapScreenState();
@@ -16,6 +18,7 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
   GoogleMapController? mapController;
 
   Set<Marker> _markers = {};
+  Set<Marker> _markers1 = {};
 
   @override
   void initState() {
@@ -29,6 +32,7 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.locations != oldWidget.locations) {
       _setMarkersFromLocations();
+      _setMarkersFromOffenderLocations();
     }
   }
 
@@ -55,6 +59,30 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
     }
   }
 
+  void _setMarkersFromOffenderLocations() {
+    final markers = widget.offenderLocations.asMap().entries.map((entry) {
+      final index = entry.key;
+      final location = entry.value;
+
+      return Marker(
+        markerId: MarkerId('offender_$index'),
+        position: location,
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueMagenta), // Or use your own
+        infoWindow: InfoWindow(
+          title: 'Offender ${index + 1}',
+          snippet: 'Suspicious activity area',
+        ),
+      );
+    }).toSet();
+
+    print(markers.length);
+
+    setState(() {
+      _markers1 = markers;
+    });
+  }
+
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
@@ -71,7 +99,7 @@ class _GoogleMapScreenState extends State<GoogleMapScreen> {
               : const LatLng(0, 0),
           zoom: 11.0,
         ),
-        markers: _markers,
+        markers: {..._markers, ..._markers1},
         gestureRecognizers: {
           Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
         },

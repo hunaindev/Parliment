@@ -2,14 +2,20 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geocoding/geocoding.dart' hide Location;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:parliament_app/main.dart';
 import 'package:parliament_app/src/core/config/app_colors.dart';
 import 'package:parliament_app/src/core/config/app_constants.dart';
 import 'package:parliament_app/src/core/config/local_storage.dart';
+import 'package:parliament_app/src/core/services/child_location_service.dart';
 import 'package:parliament_app/src/core/services/child_realtime_service.dart';
 import 'package:parliament_app/src/core/widgets/custom_text.dart';
 import 'package:parliament_app/src/core/widgets/svg_picture.dart';
+import 'package:parliament_app/src/features/child-home/presentation/blocs/dashboard/child_dashboard_bloc.dart';
 import 'package:parliament_app/src/features/child-home/presentation/widgets/sos_button.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +23,8 @@ import 'package:http/http.dart' as http;
 import '../../../auth/domain/entities/user_entity.dart';
 
 class ChildDashboard extends StatefulWidget {
-  const ChildDashboard({super.key});
+  bool isReadZone;
+  ChildDashboard({super.key, this.isReadZone = false});
 
   @override
   State<ChildDashboard> createState() => _ChildDashboardState();
@@ -28,11 +35,15 @@ class _ChildDashboardState extends State<ChildDashboard>
   late final ChildRealtimeService _childRealtimeService;
   late final Location _location;
   String _currentAddress = "Searching...";
+  String _currentAddressp = "Searching...";
+
+  bool _locationFetched = false;
 
   LocationData? _currentLocation;
   List<Map<String, dynamic>> _offenders = [];
   bool _isLoadingOffenders = false;
   StreamSubscription<LocationData>? _locationSubscription;
+  LatLng _parentLocation = LatLng(0, 0);
   // LocationData? _previousLocation;
 
   // String _childId = "";
@@ -47,51 +58,103 @@ class _ChildDashboardState extends State<ChildDashboard>
     _childRealtimeService = ChildRealtimeService();
     _location = Location();
     // _initialize();
-    _getCurrentLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Timer(Duration(seconds: 4), () async {
+        _getCurrentLocation();
+        onGetParentLocation();
+      });
+    });
   }
 
+  Future<void> onGetParentLocation() async {
+    try {
+      UserEntity? user = await LocalStorage.getUser();
+      var parentSnapshot = await FirebaseDatabase.instance
+          .ref("parents/${user?.parentId}")
+          .get();
+      if (!parentSnapshot.exists) {
+        print("❌ Parent data not found.");
+        return;
+      }
+
+      final parentData = parentSnapshot.value as Map<dynamic, dynamic>;
+
+      final double latitude = parentData['latitude']?.toDouble() ?? 0.0;
+      final double longitude = parentData['longitude']?.toDouble() ?? 0.0;
+      await _getAddressFromLatLng(
+        latitude,
+        longitude,
+      );
+      setState(() {
+        _parentLocation = LatLng(latitude, longitude);
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  final ChildLocationService _locationService = ChildLocationService();
   Future<void> _getCurrentLocation() async {
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
+    // bool serviceEnabled;
+    // PermissionStatus permissionGranted;
 
-    serviceEnabled = await _location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) return;
+    // serviceEnabled = await _location.serviceEnabled();
+    // if (!serviceEnabled) {
+    //   serviceEnabled = await _location.requestService();
+    //   if (!serviceEnabled) return;
+    // }
+
+    // permissionGranted = await _location.hasPermission();
+    // if (permissionGranted == PermissionStatus.denied) {
+    //   permissionGranted = await _location.requestPermission();
+    //   if (permissionGranted != PermissionStatus.granted) return;
+    // }
+    final granted = await _locationService.initialize();
+    if (!granted) {
+      _showSnackbar("Location permission is required.");
+      return;
     }
-
-    permissionGranted = await _location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await _location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
-    }
-
-    final locationData = await _location.getLocation();
-    setState(() {
-      _currentLocation = locationData;
-    });
-
-    if (locationData.latitude != null && locationData.longitude != null) {
+    _locationService.onLocationChanged.listen((locationData) async {
+      print("locationData sdfsdfysdfdsf");
+      print(locationData);
+      if (locationData.latitude == 0.0 && locationData.longitude == 0.0) return;
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = locationData;
+      });
       await _getAddressFromLatLng(
         locationData.latitude!,
         locationData.longitude!,
+        isParent: false,
       );
       await _getOffendersNearby(
         locationData.latitude!,
         locationData.longitude!,
       );
-    }
+    });
   }
 
-  Future<void> _getAddressFromLatLng(double lat, double lng) async {
+  void _showSnackbar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _getAddressFromLatLng(double lat, double lng,
+      {bool isParent = true}) async {
     try {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
       Placemark place = placemarks.first;
       if (!mounted) return; // ✅ check before setState
-
-      setState(() {
-        _currentAddress = "${place.name} ${place.street}, ${place.locality}";
-      });
+      if (isParent) {
+        setState(() {
+          _currentAddressp = "${place.name} ${place.street}, ${place.locality}";
+        });
+      } else {
+        setState(() {
+          _currentAddress = "${place.name} ${place.street}, ${place.locality}";
+        });
+      }
     } catch (e) {
       print("Error in address: $e");
     }
@@ -236,18 +299,23 @@ class _ChildDashboardState extends State<ChildDashboard>
             Container(
               padding: EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: AppColors.primaryLightGreen,
+                color: widget.isReadZone
+                    ? Colors.red
+                    : AppColors.primaryLightGreen,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
-                  SvgPictureWidget(path: "assets/icons/rocket.svg"),
+                  SvgPictureWidget(
+                    path: "assets/icons/rocket.svg",
+                    color: widget.isReadZone ? Colors.white : Colors.black,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'You are in the safe zone.',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: widget.isReadZone ? Colors.white : Colors.black,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         fontFamily: "Museo-Bolder",
@@ -338,6 +406,29 @@ class _ChildDashboardState extends State<ChildDashboard>
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 5),
+
+                  Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color.fromARGB(255, 13, 94, 0),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      TextWidget(
+                        text: 'Parent Location:\n$_currentAddressp',
+                        color: Colors.black,
+                        fontSize: 15,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        fontWeight: FontWeight.bold,
                       ),
                     ],
                   ),

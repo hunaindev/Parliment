@@ -45,6 +45,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen>
   String _parentId = "";
   String _name = "";
   String _child_img = "";
+  bool isReadZone = false;
 
   onTap(index) {
     setState(() {
@@ -102,28 +103,40 @@ class _ChildHomeScreenState extends State<ChildHomeScreen>
         _isDashboardLoaded = true; // mark as loaded
       });
 
-      await getIt<ChildLocationService>().startTracking(
-        childId: userId.toString(),
-        parentDeviceToken: parentDeviceToken.toString(),
-        geofences: geofences
-            .map((g) => Geofence(
-                latitude: g['center']?['lat'] ?? 0.0,
-                longitude: g['center']?['lng'] ?? 0.0,
-                radius: (g['radius'] ?? 0).toDouble(),
-                alertOnEntry: g['alertOnEntry'],
-                alertOnExit: g['alertOnExit']))
-            .toList(),
-        restricted_zones: restrictedZones
-            .map((g) => Geofence(
-                latitude: g['latitude'] ?? 0.0,
-                longitude: g['longitude'] ?? 0.0,
-                radius: (g['radius'] ?? 0).toDouble(),
-                alertOnEntry: g['alertOnEntry']))
-            .toList(),
-        childName: _name,
-        childImage: _child_img,
-        parentId: _parentId,
-      );
+      await getIt<ChildLocationService>()
+          .startTracking(
+              childId: userId.toString(),
+              parentDeviceToken: parentDeviceToken.toString(),
+              geofences: geofences
+                  .map((g) => Geofence(
+                      latitude: g['center']?['lat'] ?? 0.0,
+                      longitude: g['center']?['lng'] ?? 0.0,
+                      radius: (g['radius'] ?? 0).toDouble(),
+                      alertOnEntry: g['alertOnEntry'],
+                      alertOnExit: g['alertOnExit']))
+                  .toList(),
+              restricted_zones: restrictedZones
+                  .map((g) => Geofence(
+                      latitude: g['latitude'] ?? 0.0,
+                      longitude: g['longitude'] ?? 0.0,
+                      radius: (g['radius'] ?? 0).toDouble(),
+                      alertOnEntry: g['alertOnEntry']))
+                  .toList(),
+              childName: _name,
+              childImage: _child_img,
+              parentId: _parentId,
+              onCallBack: (isReadZone1) {
+                if (isReadZone1) {
+                  setState(() {
+                    isReadZone = isReadZone1;
+                  });
+                } else {
+                  setState(() {
+                    isReadZone = false;
+                  });
+                }
+              })
+          .then((j) {});
     } catch (e) {
       print("Error initializing dashboard and tracking: $e");
     }
@@ -178,7 +191,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen>
     }
     switch (selectedIndex) {
       case 0:
-        return ChildDashboard();
+        return ChildDashboard(isReadZone: isReadZone);
       case 1:
         return ChildMapScreen(
           geofences: geofences,
@@ -187,7 +200,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen>
       case 2:
         return ChildProfileScreen();
       default:
-        return ChildDashboard();
+        return ChildDashboard(isReadZone: isReadZone);
     }
   }
 }

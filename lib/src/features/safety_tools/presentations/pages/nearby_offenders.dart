@@ -91,6 +91,7 @@ class _NearbyOffendersScreenState extends State<NearbyOffendersScreen> {
       final localResponse = await http.get(localUrl);
       if (localResponse.statusCode == 200) {
         final localData = jsonDecode(localResponse.body);
+        print(localData);
         if (localData['data'] is List) {
           final offenders = List<Map<String, dynamic>>.from(localData['data']);
           print("✅ Got offenders from local DB");
@@ -104,36 +105,6 @@ class _NearbyOffendersScreenState extends State<NearbyOffendersScreen> {
         throw Exception(
             'Failed to fetch offenders: ${localResponse.statusCode}');
       }
-      // 'https://zylalabs.com/api/2117/offender+registry+usa+api/1908/get+offenders+by+location?lat=$lat&lng=$lng&radius=1',
-      // final url = Uri.parse(
-      //     "https://zylalabs.com/api/2117/offender+registry+usa+api/1908/get+offenders+by+location?lat=$lat&lng=$lng&radius=1");
-      // try {
-      //   final response = await http.get(url, headers: {
-      //     'Authorization': 'Bearer $ApiKey',
-      //   });
-      //   print("Offender API Hitted");
-      //   if (response.statusCode == 200) {
-      //     final body = response.body;
-      //     print("Response body: $body");
-
-      //     final data = jsonDecode(body);
-      //     // Ensure the data is a list
-      //     if (data is List) {
-      //       final offenders = List<Map<String, dynamic>>.from(data);
-      //       // OffenderRemoteDataSourceImpl().saveOffender(offenders);
-      //       return offenders;
-      //     } else if (data is Map && data['data'] is List) {
-      //       final offenders = List<Map<String, dynamic>>.from(data['data']);
-      //       // OffenderRemoteDataSourceImpl().saveOffender(offenders);
-      //       return offenders;
-      //     } else {
-      //       throw Exception('Unexpected response format');
-      //     }
-      //   } else {
-      //     print("Offender API Hitted");
-
-      //     throw Exception('Failed to fetch offenders: ${response.statusCode}');
-      //   }
     } catch (e, stack) {
       print("Offender API Hitted");
 
@@ -185,7 +156,13 @@ class _NearbyOffendersScreenState extends State<NearbyOffendersScreen> {
                         borderRadius: BorderRadius.circular(8.0),
                         border: Border.all(color: Colors.black),
                       ),
-                      child: GoogleMapScreen(locations: _childLocations)),
+                      child: GoogleMapScreen(
+                        locations: _childLocations,
+                        offenderLocations: _getFilteredOffenders()
+                            .map((d) => LatLng(d['location']['coordinates'][1],
+                                d['location']['coordinates'][0]))
+                            .toList(),
+                      )),
 
                   SizedBox(height: 10),
                   // Filtered List of Offenders
@@ -203,19 +180,20 @@ class _NearbyOffendersScreenState extends State<NearbyOffendersScreen> {
                           fontFamily: "Museo-Bolder",
                         ),
                         const SizedBox(height: 8),
-                        ..._getFilteredOffenders()
-                            .map((offender) => Column(
-                                  children: [
-                                    OffenderCard(
-                                      name: offender["name"]!,
-                                      type: offender["type"]!,
-                                      distance: offender["distance"]!,
-                                      lastSeen: offender["lastSeen"]!,
-                                    ),
-                                    const SizedBox(height: 8),
-                                  ],
-                                ))
-                            .toList(),
+                        ..._getFilteredOffenders().map((offender) {
+                          print(offender);
+                          return Column(
+                            children: [
+                              OffenderCard(
+                                name: offender["name"]!,
+                                type: offender["gender"]!,
+                                distance: "0km",
+                                lastSeen: '',
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          );
+                        })
                       ],
                     ),
                   ),

@@ -2,12 +2,16 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:geolocator/geolocator.dart' as geo;
+import 'package:parliament_app/src/core/config/local_storage.dart';
+import 'package:parliament_app/src/features/auth/domain/entities/user_entity.dart';
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -114,38 +118,6 @@ class LocationService {
     );
   }
 
-  /// One-time location fetch
-  // Future<LocationData?> getCurrentLocation() async {
-  //   try {
-  //     PermissionStatus permissionStatus = await _location.hasPermission();
-  //     if (permissionStatus == PermissionStatus.denied) {
-  //       permissionStatus = await _location.requestPermission();
-  //       if (permissionStatus != PermissionStatus.granted) {
-  //         debugPrint("❌ Location permission denied.");
-  //         return null;
-  //       }
-  //     }
-
-  //     bool serviceEnabled = await _location.serviceEnabled();
-  //     if (!serviceEnabled) {
-  //       serviceEnabled = await _location.requestService();
-  //       if (!serviceEnabled) {
-  //         debugPrint("❌ Location service not enabled.");
-  //         return null;
-  //       }
-  //     }
-
-  //     debugPrint("📍 Getting current location...");
-  //     final locationData = await _location.getLocation();
-  //     debugPrint(
-  //         "✅ Got location: ${locationData.latitude}, ${locationData.longitude}");
-  //     return locationData;
-  //   } catch (e) {
-  //     debugPrint("❌ Error in getCurrentLocation(): $e");
-  //     return null;
-  //   }
-  // }
-
   Future<void> warmupLocation() async {
     try {
       await _location.onLocationChanged.first
@@ -155,47 +127,6 @@ class LocationService {
       debugPrint("⚠️ Warmup failed: $e");
     }
   }
-
-  // Future<LocationData?> getCurrentLocation() async {
-  //   try {
-  //     PermissionStatus permissionStatus = await _location.hasPermission();
-  //     if (permissionStatus == PermissionStatus.denied) {
-  //       permissionStatus = await _location.requestPermission();
-  //       if (permissionStatus != PermissionStatus.granted) {
-  //         debugPrint("❌ Location permission denied.");
-  //         return null;
-  //       }
-  //     }
-
-  //     bool serviceEnabled = await _location.serviceEnabled();
-  //     if (!serviceEnabled) {
-  //       serviceEnabled = await _location.requestService();
-  //       if (!serviceEnabled) {
-  //         debugPrint("❌ Location service not enabled.");
-  //         return null;
-  //       }
-  //     }
-
-  //     debugPrint("📍 Getting current location...");
-  //     LocationData? locationData;
-
-  //     try {
-  //       locationData =
-  //           await _location.getLocation().timeout(const Duration(seconds: 5));
-  //     } catch (_) {
-  //       debugPrint("⚠️ getLocation() timeout, trying stream...");
-  //       locationData = await _location.onLocationChanged.first
-  //           .timeout(const Duration(seconds: 5));
-  //     }
-
-  //     debugPrint(
-  //         "✅ Got location: ${locationData.latitude}, ${locationData.longitude}");
-  //     return locationData;
-  //   } catch (e) {
-  //     debugPrint("❌ Error in getCurrentLocation(): $e");
-  //     return null;
-  //   }
-  // }
 
   Future<LocationData?> getCurrentLocation() async {
     try {
@@ -242,6 +173,32 @@ class LocationService {
     } catch (e) {
       debugPrint("❌ Error in getCurrentLocation(): $e");
       return null;
+    }
+  }
+
+  void startRealtimeLocationUpdates() {
+    final locationStream = onLocationChanged;
+    locationStream.listen((locationData) async {
+      if (locationData.latitude != null && locationData.longitude != null) {
+        print("Tetsststststs23423");
+
+        await updateLocationToFirebase(locationData);
+      }
+    });
+  }
+
+  Future<void> updateLocationToFirebase(LocationData locationData) async {
+    try {
+      // Replace with your Firestore path and user ID logic
+      UserEntity? userId = await LocalStorage.getUser();
+      await FirebaseDatabase.instance.ref('parents/${userId?.userId}').set({
+        'latitude': locationData.latitude,
+        'longitude': locationData.longitude,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
+      debugPrint("📡 Location updated to Firebase.");
+    } catch (e) {
+      debugPrint("❌ Failed to update location to Firebase: $e");
     }
   }
 

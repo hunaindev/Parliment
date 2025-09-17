@@ -4,4 +4,5 @@ import 'package:parliament_app/src/features/child-home/data/models/child_dashboa
 
 abstract class GetChildrenDashboardRemoteDataSource {
   Future<ChildDashboardModel> fetchDasboard({required String userId});
+  Future<void> refreshToken({required String userId});
 }
